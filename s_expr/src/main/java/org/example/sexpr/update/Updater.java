@@ -3,17 +3,12 @@ package org.example.sexpr.update;
 import org.example.sexpr.ast.*;
 import org.example.sexpr.model.NodeView;
 import org.example.sexpr.query.ExecutionContext;
+import org.example.sexpr.query.PathParser;
+import org.example.sexpr.query.PathQuery;
 import org.example.sexpr.query.QueryEngine;
 
 import java.util.*;
 
-/**
- * Применяет модификации к узлам, найденным по path-языку (XPath-подобному).
- *
- * Важно:
- * - Поиск узлов делаем через QueryEngine (он уже поддерживает /, //, * и predicates).
- * - Модификации выполняем иммутабельно: строим новое дерево (newRoot).
- */
 public final class Updater {
 
     private final QueryEngine engine = new QueryEngine();
@@ -23,11 +18,18 @@ public final class Updater {
     }
 
     public UpdateResult apply(ExecutionContext ctx, String path, Mutation mutation) {
-        Objects.requireNonNull(ctx);
         Objects.requireNonNull(path);
+        var q = new PathParser().parse(path);
+        return apply(ctx, q, mutation);
+    }
+
+    // NEW overload: apply by PathQuery (needed for fluent API)
+    public UpdateResult apply(ExecutionContext ctx, PathQuery query, Mutation mutation) {
+        Objects.requireNonNull(ctx);
+        Objects.requireNonNull(query);
         Objects.requireNonNull(mutation);
 
-        var matches = engine.find(ctx, path);
+        var matches = engine.find(ctx, query);
         if (matches.isEmpty()) {
             return new UpdateResult(ctx.documentRoot(), 0);
         }
@@ -49,19 +51,15 @@ public final class Updater {
 
         List<SNode> items = current.items();
         List<SNode> rebuilt = new ArrayList<>();
-        if (items.isEmpty()) {
-            return current;
-        }
+        if (items.isEmpty()) return current;
 
-        rebuilt.add(items.get(0));
+        rebuilt.add(items.get(0)); // tag
 
         for (int i = 1; i < items.size(); i++) {
             SNode n = items.get(i);
 
             if (n instanceof SSymbol sym && sym.isAttributeName()) {
-                if (i + 1 >= items.size()) {
-                    throw new IllegalStateException("Attribute " + sym.value() + " has no value");
-                }
+                if (i + 1 >= items.size()) throw new IllegalStateException("Attribute " + sym.value() + " has no value");
                 rebuilt.add(n);
                 rebuilt.add(items.get(i + 1));
                 i++;
@@ -70,11 +68,10 @@ public final class Updater {
 
             if (n instanceof SList child && NodeView.isElement(child)) {
                 SList rebuiltChild = rebuild(child, documentRoot, targets, mutation, counter);
-                if (rebuiltChild != null) {
-                    rebuilt.add(rebuiltChild);
-                }
+                if (rebuiltChild != null) rebuilt.add(rebuiltChild);
                 continue;
             }
+
             rebuilt.add(n);
         }
 
@@ -82,9 +79,7 @@ public final class Updater {
 
         if (targets.contains(current)) {
             if (mutation instanceof Mutation.Delete) {
-                if (current == documentRoot) {
-                    throw new IllegalArgumentException("Cannot delete documentRoot");
-                }
+                if (current == documentRoot) throw new IllegalArgumentException("Cannot delete documentRoot");
                 counter.value++;
                 return null;
             }
@@ -108,10 +103,6 @@ public final class Updater {
         return rebuiltNode;
     }
 
-    /**
-     * Нормализуем порядок: tag, затем все атрибуты, затем остальное содержимое (включая children).
-     * Для setAttr: удаляем старые пары attrName и добавляем одну новую пару.
-     */
     private SList setAttrNormalized(SList element, String attrName, SNode value) {
         List<SNode> items = element.items();
         if (!NodeView.isElement(element)) return element;
@@ -145,7 +136,6 @@ public final class Updater {
         return new SList(out);
     }
 
-    /** removeAttr: просто выкидываем все пары этого атрибута, нормализуем порядок как выше. */
     private SList removeAttrNormalized(SList element, String attrName) {
         List<SNode> items = element.items();
         if (!NodeView.isElement(element)) return element;
