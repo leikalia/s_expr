@@ -18,7 +18,7 @@ class FluentApiTest {
 
         var engine = new QueryEngine();
 
-        // XPath-style: абсолютный путь начинается с корневого тега /root
+        
         var byString = engine.find(doc, "/root//supermax[:id=33]").size();
 
         var q = QueryDsl.start()

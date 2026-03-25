@@ -21,7 +21,7 @@ class FluentApiMoreTests {
     void buildShortcutWorksWithoutDone() {
         var doc = parser.parse("(root (a) (b) (c))");
 
-        // build() доступен прямо после PathStep благодаря default-методам
+        
         var q = QueryDsl.start()
                 .root()
                 .child("root")
@@ -93,7 +93,7 @@ class FluentApiMoreTests {
                 .build();
 
         assertEquals(byString, q.find(doc).size());
-        // descendants от root: a, x, b, y, c = 5
+        
         assertEquals(5, byString);
     }
 
@@ -165,11 +165,11 @@ class FluentApiMoreTests {
     void hereRelativeContextDiffersFromRootAbsolute() {
         var doc = parser.parse("(root (group (item) (item)) (group (item)))");
 
-        // найдём contextNode = /root/group (первый)
+        
         var group1 = engine.find(doc, "/root/group").get(0).node();
         var ctx = ExecutionContext.of(doc, group1);
 
-        // relative from context: item -> 2
+        
         var qRel = QueryDsl.start()
                 .here()
                 .child("item")
@@ -177,7 +177,7 @@ class FluentApiMoreTests {
 
         assertEquals(2, qRel.find(ctx).size());
 
-        // absolute from document root: /root//item -> 3
+        
         var qAbs = QueryDsl.start()
                 .root()
                 .child("root")
@@ -263,7 +263,7 @@ class FluentApiMoreTests {
                 .root()
                 .child("root")
                 .child("b")
-                .build(); // shortcut без done
+                .build(); 
 
         var res = q.delete().apply(doc);
         assertEquals(1, res.affectedCount());
@@ -283,10 +283,10 @@ class FluentApiMoreTests {
                         ")"
         );
 
-        // строка
+        
         var byString = engine.find(doc, "/root//user[:active=true]").size();
 
-        // fluent
+        
         var q = QueryDsl.start()
                 .root()
                 .child("root")

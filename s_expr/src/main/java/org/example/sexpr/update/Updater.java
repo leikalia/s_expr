@@ -23,7 +23,6 @@ public final class Updater {
         return apply(ctx, q, mutation);
     }
 
-    // NEW overload: apply by PathQuery (needed for fluent API)
     public UpdateResult apply(ExecutionContext ctx, PathQuery query, Mutation mutation) {
         Objects.requireNonNull(ctx);
         Objects.requireNonNull(query);
