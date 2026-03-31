@@ -24,9 +24,8 @@ public final class SExpr {
     /**
      * Разбирает строку с одним S-выражением и возвращает AST-узел.
      *
-     * @param input текст S-выражения, например {@code "(root (child :k v))"}
+     * @param input текст S-выражения, например {"(root (child :k v))"}
      * @return корневой узел AST
-     * @throws org.example.sexpr.parse.ParseException если входная строка некорректна
      */
     public static SNode parse(String input) {
         return new SExprParser().parse(input);
@@ -48,7 +47,7 @@ public final class SExpr {
      * <p>Примеры путей:
      * <ul>
      *   <li>{@code "/root/users/user"}      — абсолютный путь, прямые потомки</li>
-     *   <li>{@code "//user"}                — все элементы {@code user} в дереве</li>
+     *   <li>{@code "//user"}                — все элементы {user} в дереве</li>
      *   <li>{@code "//user[:id=42]"}        — фильтр по атрибуту</li>
      *   <li>{@code "//user[:active=true]"}  — булев фильтр</li>
      * </ul>

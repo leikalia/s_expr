@@ -1,50 +1,105 @@
 package org.example.sexpr;
 
 import org.example.sexpr.ast.SBool;
-import org.example.sexpr.parse.SExprParser;
-import org.example.sexpr.print.SExprPrinter;
-import org.example.sexpr.query.ExecutionContext;
-import org.example.sexpr.query.QueryEngine;
 import org.example.sexpr.update.Mutation;
-import org.example.sexpr.update.Updater;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
-class DemoShowcaseTest {
+
+class SExprFacadeTest {
+
+    private static final String DOC =
+            "(root " +
+            "(users " +
+            "(user :id 1 :active true  :name \"Ann\") " +
+            "(user :id 2 :active false :name \"Bob\") " +
+            "(user :id 3 :active true  :name \"Eva\") " +
+            ") " +
+            "(meta) " +
+            ")";
+
+    private static final String SCHEMA_TEXT =
+            "(schema " +
+            "(root root) " +
+            "(element root  (attrs) (children (users 1 1) (meta 0 1))) " +
+            "(element users (attrs) (children (user 1 N))) " +
+            "(element user  (attrs (:id number required) (:active bool optional) (:name string optional)) (children)) " +
+            "(element meta  (attrs) (children)) " +
+            ")";
+
 
     @Test
-    void showcase() {
-        var parser = new SExprParser();
-        var printer = new SExprPrinter();
-        var engine = new QueryEngine();
-        var updater = new Updater();
+    void parseAndPrint() {
+        var doc = SExpr.parse(DOC);
+        assertNotNull(doc);
+        String printed = SExpr.print(doc);
+        assertTrue(printed.startsWith("(root"));
+    }
 
-        var doc = parser.parse(
-                "(root " +
-                        "(maxverstappen (supermax :id 1 :active true) (supermax :id 33 :active true)) " +
-                        "(tutududu)" +
-                        ")"
-        );
+    @Test
+    void normalizeIsIdempotent() {
+        String once  = SExpr.normalize(DOC);
+        String twice = SExpr.normalize(once);
+        assertEquals(once, twice);
+    }
 
-        assertEquals(2, engine.find(doc, "/root/maxverstappen/supermax").size());
-        assertEquals(1, engine.find(doc, "//supermax[:id=33]").size());
 
-        var max = engine.find(doc, "/root/maxverstappen").get(0).node();
-        var ctx = ExecutionContext.of(doc, max);
+    @Test
+    void findAllUsers() {
+        var doc = SExpr.parse(DOC);
+        assertEquals(3, SExpr.find(doc, "/root//user").size());
+    }
 
-        assertEquals(2, engine.find(ctx, "supermax").size());
+    @Test
+    void findActiveUsers() {
+        var doc = SExpr.parse(DOC);
+        assertEquals(2, SExpr.find(doc, "/root//user[:active=true]").size());
+    }
 
-        var res = updater.apply(doc, "//supermax[:id=33]", Mutation.setAttr(":active", new SBool(false)));
-        assertEquals(1, res.affectedCount());
 
-        System.out.println("UPDATED DOC:");
-        System.out.println(printer.print(res.newRoot()));
+    @Test
+    void deactivateUser() {
+        var doc = SExpr.parse(DOC);
+        var result = SExpr.update(doc, "//user[:id=1]", Mutation.setAttr(":active", new SBool(false)));
+        assertEquals(1, result.affectedCount());
+        assertEquals(1, SExpr.find(result.newRoot(), "//user[:active=true]").size());
+    }
 
-        var res2 = updater.apply(res.newRoot(), "//supermax[:id=1]", Mutation.delete());
-        assertEquals(1, res2.affectedCount());
+    @Test
+    void deleteUser() {
+        var doc = SExpr.parse(DOC);
+        var result = SExpr.update(doc, "//user[:id=2]", Mutation.delete());
+        assertEquals(1, result.affectedCount());
+        assertEquals(2, SExpr.find(result.newRoot(), "//user").size());
+    }
 
-        System.out.println("AFTER DELETE:");
-        System.out.println(printer.print(res2.newRoot()));
+
+    @Test
+    void fluentDslFindsActiveUsers() {
+        var doc = SExpr.parse(DOC);
+        var matches = SExpr.query()
+                .root().child("root").desc("user")
+                .where().attrEq(":active", true).done()
+                .build()
+                .find(doc);
+        assertEquals(2, matches.size());
+    }
+
+
+    @Test
+    void validDocPassesSchema() {
+        var doc    = SExpr.parse(DOC);
+        var schema = SExpr.parseSchema(SExpr.parse(SCHEMA_TEXT));
+        var result = SExpr.validate(doc, schema);
+        assertTrue(result.ok(), () -> "Violations: " + result.violations());
+    }
+
+    @Test
+    void invalidDocFailsSchema() {
+        var bad = SExpr.parse("(root (users (user :name \"Ghost\")) (meta))");
+        var schema = SExpr.parseSchema(SExpr.parse(SCHEMA_TEXT));
+        var result = SExpr.validate(bad, schema);
+        assertFalse(result.ok());
     }
 }
