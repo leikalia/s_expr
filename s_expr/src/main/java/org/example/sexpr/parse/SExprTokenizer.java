@@ -16,7 +16,6 @@ public final class SExprTokenizer {
 
             if (Character.isWhitespace(c)) { i++; continue; }
 
-            // optional: ; comment until newline
             if (c == ';') {
                 i++;
                 while (i < input.length() && input.charAt(i) != '\n') i++;
@@ -28,7 +27,7 @@ public final class SExprTokenizer {
 
             if (c == '"') {
                 int start = i;
-                i++; // skip opening "
+                i++;
                 StringBuilder sb = new StringBuilder();
                 while (i < input.length()) {
                     char ch = input.charAt(i);

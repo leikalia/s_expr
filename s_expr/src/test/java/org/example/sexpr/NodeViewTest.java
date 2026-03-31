@@ -34,8 +34,8 @@ class NodeViewTest {
 
     @Test
     void childrenExcludeAttributeValueLists() {
-        // :meta имеет значение (x y) - это НЕ ребенок
-        // (tag ...) - это ребенок
+        
+        
         var root = (SList) new SExprParser().parse("(user :meta (x y) (child :k 1) (child :k 2))");
 
         var kids = NodeView.children(root);
@@ -64,7 +64,7 @@ class NodeViewTest {
     @Test
     void attributeWithoutValueIsError() {
         var root = (SList) new SExprParser().parse("(user :id)");
-        // attrs() и children() должны ругаться одинаково, потому что формат битый
+        
         assertThrows(IllegalStateException.class, () -> NodeView.attrs(root));
         assertThrows(IllegalStateException.class, () -> NodeView.children(root));
     }

@@ -44,7 +44,7 @@ class UpdateTest {
         var text = new SExprPrinter().print(res.newRoot());
 
         assertTrue(text.contains("(user :id 1 :name \"Ann\")"));
-        assertTrue(text.contains("(user :id 2)")); // name удалили
+        assertTrue(text.contains("(user :id 2)")); 
     }
 
     @Test
